@@ -1,0 +1,5 @@
+- [x] Quick/deeper research, page extracts, source validation and monthly safety cap
+- [x] Screenshot-inspired conversational UI, sessions, citations, sources, export
+- [x] Native research modes and extracts
+- [x] Automated backend/browser verification and Android build (28 backend; 2 budget; 6 preview; 7 SQL alerts; 3 HTTP; 9 research language/viewport cases)
+- [ ] Live Tavily check requires owner key

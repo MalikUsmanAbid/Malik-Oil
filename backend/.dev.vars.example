@@ -1,0 +1,8 @@
+# Firebase service account is SERVER ONLY; use wrangler secret put for remote secrets.
+FCM_CLIENT_EMAIL=""
+FCM_PRIVATE_KEY=""
+# No authentication bypass exists. Configure Firebase project + owner UID in wrangler.jsonc.
+
+# Server only; opt in after verifying Tavily pay-as-you-go OFF. Never put in APK.
+TAVILY_API_KEY=""
+TAVILY_FREE_TIER_CONFIRMED="false"

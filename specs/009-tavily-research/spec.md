@@ -1,0 +1,2 @@
+# Tavily public research
+Owner-requested no-billing integration: one basic search per research attempt, Gemini cited synthesis, maximum two previous public questions as context, explicit new-research reset. Use Windows encrypted key storage; never ship credentials. Search excerpts must not be represented as independently read full articles or verified local rates. Existing 20/day quota remains. No deployment.

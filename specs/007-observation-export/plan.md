@@ -1,0 +1,2 @@
+# Plan
+Reuse currentchart rows, Blob download in browser and Android StorageAccessFramework document picker. CSV escaping quotes/newlines and formula prefixes; UTF8BOM for spreadsheet Urdu. Android keeps pending export in memory, binds to initiating UID and clears after picker/cancel. No shared-storage permission. Existing Playwright fixture test adds download assertions, Kotlin CSVhelper tests, native build/lint. Screenshots from real headless browser, not image-generation edits.

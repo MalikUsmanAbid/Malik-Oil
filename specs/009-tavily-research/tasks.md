@@ -1,0 +1,6 @@
+- [x] Search adapter, separate credentials, bounded provider reads
+- [x] Secure key setup and preview loading
+- [x] Public-question follow-up and reset, three languages
+- [x] TypeScript, 26 backend tests, encrypted key self-test, browser 9 language/viewport cases including follow-up/reset
+- [x] Android assembleDebug/lintDebug passed: 0 errors, 1 dependency-version warning
+- [ ] Live Tavily request (owner key not yet provided)

@@ -1,0 +1,3 @@
+# SYNTHETIC FORMAT EXAMPLE. Replace prices AND timestamps with actual observations. This is not live market data.
+sarson | Lahore | standard | 8000 | 40kg | 2026-10-18T10:00:00+05:00
+sarson | Lahore | standard | 8240 | 40kg | 2026-10-18T10:15:00+05:00

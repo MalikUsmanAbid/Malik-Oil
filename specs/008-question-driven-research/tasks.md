@@ -1,0 +1,6 @@
+- [x] Diagnose question ignored during discovery
+- [x] Add bounded literal question query, preserving regional fallback
+- [x] Expose queries and news-only coverage in response
+- [x] Verify: TypeScript check, 20 backend tests; restarted preview; live response 2 sources / 2 validated findings, no source failures
+- [ ] Full-web provider activation (requires owner search-service account/key; billing disabled)
+- [ ] WhatsApp official account/group eligibility verification (Meta documentation currently HTTP 429)

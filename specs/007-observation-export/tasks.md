@@ -1,0 +1,2 @@
+- [x] E001 Add safe selected-range CSV exports and regression tests.
+- [x] E002 Capture current design images and verify Android/browser; save source and artifacts.

@@ -1,0 +1,6 @@
+# Copy these to ~/.gradle/gradle.properties or pass via -P. Firebase identifiers are public app config, never service account secrets.
+MALIK_API_URL=
+MALIK_FIREBASE_API_KEY=
+MALIK_FIREBASE_APP_ID=
+MALIK_FIREBASE_PROJECT_ID=
+MALIK_FIREBASE_SENDER_ID=

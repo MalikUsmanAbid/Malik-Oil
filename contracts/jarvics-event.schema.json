@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Planned JARVICS rate alert event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "eventId",
+    "eventType",
+    "occurredAt",
+    "rateId"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "eventId": {
+      "type": "string"
+    },
+    "eventType": {
+      "const": "rate.alert.created"
+    },
+    "occurredAt": {
+      "type": "integer"
+    },
+    "rateId": {
+      "type": "string"
+    }
+  }
+}

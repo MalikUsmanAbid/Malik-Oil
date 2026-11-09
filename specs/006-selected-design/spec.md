@@ -1,0 +1,2 @@
+# Selected B+A+C design
+Owner selected generated conceptBfor light owner dashboard, Afor dark gold/green graph, Cfor pale-teal research. Implement in existing browser/native UI, preserving English/UrduRTL/Roman, chart LTR axes, source dates, safe questions, honest synthetic/verified labels and all security controls. No billing/deployment or credential changes. Verify responsive browser flows, visual contrast and selected-theme boundaries, live research if budget permits, Android build/lint/unit; no phone-runtime claims.

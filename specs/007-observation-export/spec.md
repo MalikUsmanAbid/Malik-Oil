@@ -1,0 +1,2 @@
+# Observation CSV export and design review images
+User requests updated dashboard, chart and research images and useful missing features. Add selected-range CSV export with commodity/market/grade/source/UTCtime/PKRkg and sample label in browser and Android, no automatic sharing or data mutation. Preserve auth/session guard and protect spreadsheet formula cells. Capture actual updated browser dashboard/chart images; retain valid live research screenshot. Test export content and flows, Android build/lint/unit; no billing/deploy.

@@ -1,0 +1,4 @@
+# API research and owner workspace
+Owner requests API AI rather than local Ollama. Three distinct languages: English, Urdu script and Roman Urdu. Home Samundri; research Punjab and surrounding mandis without claiming exact distances or complete coverage. WhatsApp Business, existing group, owner is not admin. Automatic group access desired but entitlement unverified: do not connect or claim success. No deployment.
+
+Acceptance: authenticated public-only research through server-held Gemini key; Google Search sources and checked time, ungrounded response withheld, no AI writes to rates; strict allowlist input prohibits private chat transfer. Free-first pinned model, 20-attempt/day safety cap, no paid/model fallback; 429/503 clear. Browser test UI and native navigation expose research/languages/home. Preserve all alert/auth/cache rules. Document actual integration blockers and manual WhatsApp alternative. Build/lint and meaningful adapter tests pass.

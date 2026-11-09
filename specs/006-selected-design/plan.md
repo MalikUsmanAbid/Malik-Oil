@@ -1,0 +1,2 @@
+# Plan
+Reuse vanilla browser components and Kotlin Views/Canvas. Light ivory owner palette with emerald actions and quick alert/review cards; scope dark palette to trading chart; pale-teal question/source-card research. Preserve data/API contracts and source limitations. Update Android shared palette/theme and primary research action, keep Canvas dark. Reuse Playwright fixture suite with style assertions and screenshots, limited live browser request, PythonHTTPsecurity checks and Android build/unit/lint. No new runtime dependency.

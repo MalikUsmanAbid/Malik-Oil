@@ -1,0 +1,2 @@
+# Plan
+Reuse existing code and tests. Add small bounded network readers, Android session check before/after network and after cached fetch, cap shared text, reject credentials in URLs, use FLAG_SECURE without visual redesign. Source evidence uses token equality. Harden preview socket timeout and isolation headers. Verify adversarial cases in TS/Python, pure JVM Kotlin checks for response/session helpers, build/lint and signed debug APK; local HTTP checks and one free research smoke. No schema redesign, Firebase/Meta changes or new services.

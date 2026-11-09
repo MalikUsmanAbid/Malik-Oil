@@ -1,0 +1,7 @@
+{
+  "name": "malik-oil-intelligence", "main": "src/index.ts", "compatibility_date": "2026-10-18",
+  "workers_dev": true,
+  "vars": {"FIREBASE_PROJECT_ID":"", "OWNER_UID":"", "AUTH_NOT_BEFORE":"0", "ENABLE_CLOUD_AI":"false", "AI_MODEL":"", "ENABLE_RESEARCH":"false"},
+  "d1_databases": [{"binding":"DB", "database_name":"malik-oil", "database_id":"REPLACE_AFTER_CONSENT", "migrations_dir":"migrations"}],
+  "triggers":{"crons":["*/5 * * * *"]}
+}

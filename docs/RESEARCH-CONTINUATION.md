@@ -1,0 +1,6 @@
+# Research continuation — 7 November 2026
+The question-discovery defect is fixed. Optional Tavily integration now runs exactly one basic general-web search per research attempt with explicit free-tier confirmation. Gemini synthesizes supplied excerpts using validated source IDs, exact evidence quotes and numeric-token checks. Two earlier public questions may be used as context; New research clears context. Browser and native source cards distinguish search excerpts from headlines and independently read articles.
+
+TypeScript check, all 26 backend tests, encrypted credential self-test and script syntax checks passed. Browser tests passed 9 language/viewport combinations, follow-up/reset, unsafe-link/text handling and error fallback. Provider tests use fixtures; no live Tavily call has been made because owner key is absent. Setup script restarts preview and runs one live check after the owner saves their key. Live local mandi rates remain unverified; no rate auto-approval, billing changes, cloud deployment or WhatsApp connection performed.
+
+Setup instructions: TAVILY-SETUP.md. Native Firebase/backend setup and physical-device verification remain outstanding. This is a focused cited researcher using search excerpts, not full Perplexity parity or autonomous deep research.
