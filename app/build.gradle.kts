@@ -16,34 +16,16 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        val newsKey = providers.environmentVariable("NEWS_API_KEY").orNull
-            ?: providers.gradleProperty("NEWS_API_KEY").orNull
-            ?: ""
-        buildConfigField("String", "NEWS_API_KEY", "\"$newsKey\"")
-    }
 
-    signingConfigs {
-        create("release") {
-            storeFile = file("${rootDir}/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
-        named("debug") {
-            storeFile = file("${rootDir}/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
-        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+
         }
         debug {
-            signingConfig = signingConfigs.getByName("debug")
+
         }
     }
 
@@ -59,6 +41,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.code.gson:gson:2.11.0")
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
 

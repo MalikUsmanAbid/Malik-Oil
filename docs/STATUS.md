@@ -1,3 +1,5 @@
+Current Compose delivery (11 November 2026): root app/; 16 JVM tests, debug APK build and lint passed (0 errors, 32 warnings). Signature and alignment verified. See docs/COMPOSE-AUTOMATION.md for current setup and physical-device limitations. Earlier entries below are historical.
+
 ## 8 November 2026 owner logo integration
 Owner-supplied full logo retained in assets/branding/malik-oil-original-logo.jpg. Built-in image_gen polished a transparent gold-drop/two-leaf icon; prompt recorded in assets/branding/README.md. Android adaptive normal/round launcher and browser brand/favicon now use it. Browser image-load/layout visually checked and clipping repaired. Android APK assembled; lint XML has zero errors and four warnings (dependency version, obsolete SDK check, retained unused old resource, optional monochrome icon). Signature/alignment verified during icon implementation. Physical phone launcher mask appearance remains unverified.
 APK SHA256: d8f944733a2d913790045ffb61eeb3fbbc31e0d33c921d02571bcd9eb90e2130. No billing/deployment.

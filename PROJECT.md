@@ -1,3 +1,6 @@
+# Current active Android project
+The GitHub main branch was migrated by AI Studio to a root-level Compose app in commit a583748. Open this repository root in Android Studio. The active sources are app/src, and tools/build-apk.ps1 -Lint runs root Gradle checks. Feature specs/016-live-notifications-and-daily-research describes the current notification and report work. Older references below to android/ describe the archived legacy layout.
+
 # Malik Oil â€” saved local project
 
 Canonical project folder:

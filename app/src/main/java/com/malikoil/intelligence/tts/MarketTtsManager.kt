@@ -36,6 +36,7 @@ class MarketTtsManager(private val context: Context) : TextToSpeech.OnInitListen
     private val _isUrduSupported = MutableStateFlow(false)
     val isUrduSupported: StateFlow<Boolean> = _isUrduSupported.asStateFlow()
 
+    private var lastUtteranceId:String?=null
     private var isInitialized = false
 
     init {
@@ -59,7 +60,7 @@ class MarketTtsManager(private val context: Context) : TextToSpeech.OnInitListen
                 }
 
                 override fun onDone(utteranceId: String?) {
-                    _ttsState.value = TtsState.COMPLETED
+                    if(utteranceId==lastUtteranceId)_ttsState.value = TtsState.COMPLETED
                 }
 
                 @Deprecated("Deprecated in Java")
@@ -102,7 +103,7 @@ class MarketTtsManager(private val context: Context) : TextToSpeech.OnInitListen
         val targetLocale = when (languageCode) {
             "ur" -> {
                 val urduLocale = Locale("ur", "PK")
-                if (_isUrduSupported.value) urduLocale else Locale.getDefault()
+                urduLocale
             }
             "roman" -> Locale.US
             else -> Locale.US
@@ -118,6 +119,9 @@ class MarketTtsManager(private val context: Context) : TextToSpeech.OnInitListen
             tts?.language = Locale.US
         }
 
+        val offlineVoice=tts?.voices?.firstOrNull{it.locale.language==targetLocale.language&&!it.isNetworkConnectionRequired}
+        if(offlineVoice==null){_ttsState.value=TtsState.ERROR;android.widget.Toast.makeText(context,"Install an offline voice for this language in Android speech settings",android.widget.Toast.LENGTH_LONG).show();return}
+        tts?.voice=offlineVoice
         tts?.setSpeechRate(_speechRate.value)
         tts?.setPitch(1.0f)
 
@@ -126,7 +130,12 @@ class MarketTtsManager(private val context: Context) : TextToSpeech.OnInitListen
         }
 
         _ttsState.value = TtsState.SPEAKING
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, params, "malik_summary_utterance")
+        val parts=text.codePoints().toArray().toList().chunked(TextToSpeech.getMaxSpeechInputLength()/2)
+        lastUtteranceId="malik_summary_${parts.lastIndex}"
+        parts.forEachIndexed{index,points->
+            val part=String(points.toIntArray(),0,points.size)
+            tts?.speak(part,if(index==0)TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD,params,"malik_summary_$index")
+        }
     }
 
     fun setSpeed(rate: Float) {
@@ -136,6 +145,7 @@ class MarketTtsManager(private val context: Context) : TextToSpeech.OnInitListen
     }
 
     fun stop() {
+        lastUtteranceId=null
         if (isInitialized) {
             tts?.stop()
             _ttsState.value = TtsState.IDLE

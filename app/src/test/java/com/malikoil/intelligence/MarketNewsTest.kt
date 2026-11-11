@@ -8,7 +8,7 @@ class MarketNewsTest {
 
     @Test
     fun testCuratedPunjabNewsPopulated() {
-        val repo = MarketRepository()
+        val repo = MarketRepository(includeSamples = true)
         val news = repo.getCuratedPunjabNews()
 
         assertTrue("Expected at least 5 curated news articles", news.size >= 5)
@@ -28,7 +28,7 @@ class MarketNewsTest {
 
     @Test
     fun testMarketSentimentInitialized() {
-        val repo = MarketRepository()
+        val repo = MarketRepository(includeSamples = true)
         val sentiment = repo.marketSentiment.value
 
         assertNotNull(sentiment)
@@ -39,7 +39,7 @@ class MarketNewsTest {
 
     @Test
     fun testPriceNormalization() {
-        val repo = MarketRepository()
+        val repo = MarketRepository(includeSamples = true)
         // 8640 PKR per 40kg -> 216 PKR/kg -> 21600 paisa/kg
         val paisa = repo.normalizePricePaisaKg(8640.0, "40kg")
         assertEquals(21600L, paisa)
@@ -51,7 +51,7 @@ class MarketNewsTest {
 
     @Test
     fun testSarsonCanola7DayTrends() {
-        val repo = MarketRepository()
+        val repo = MarketRepository(includeSamples = true)
         val rates = repo.rates.value
 
         val sarsonRates = rates.filter { it.commodity == "sarson" && !it.isSample }
@@ -73,7 +73,7 @@ class MarketNewsTest {
 
     @Test
     fun test7DayHighLowExtremesCalculation() {
-        val repo = MarketRepository()
+        val repo = MarketRepository(includeSamples = true)
         val rates = repo.rates.value
 
         val sarsonRates = rates.filter { it.commodity == "sarson" && !it.isSample }
@@ -99,7 +99,7 @@ class MarketNewsTest {
 
     @Test
     fun testTargetPriceAlertCreationAndUnits() {
-        val repo = MarketRepository()
+        val repo = MarketRepository(includeSamples = true)
 
         // Alert with 40kg maund unit: 8000 PKR / 40kg -> 200 PKR/kg
         val alertMaund = repo.addTargetPriceAlert(
@@ -131,7 +131,7 @@ class MarketNewsTest {
 
     @Test
     fun testTargetPriceAlertTriggerConditions() {
-        val repo = MarketRepository()
+        val repo = MarketRepository(includeSamples = true)
 
         // Create alert for Sarson AT_OR_BELOW 200 PKR/kg (8000/maund)
         val alert = repo.addTargetPriceAlert(
@@ -178,7 +178,7 @@ class MarketNewsTest {
 
     @Test
     fun testTargetPriceAlertSimulationAndToggle() {
-        val repo = MarketRepository()
+        val repo = MarketRepository(includeSamples = true)
         val alert = repo.addTargetPriceAlert(
             commodity = "canola",
             targetPrice = 230.0,
@@ -211,7 +211,7 @@ class MarketNewsTest {
 
     @Test
     fun testSearchGroundingToolNewsFeed() {
-        val repo = MarketRepository()
+        val repo = MarketRepository(includeSamples = true)
         val news = repo.getCuratedPunjabNews()
 
         assertTrue("Expected search grounded articles", news.isNotEmpty())

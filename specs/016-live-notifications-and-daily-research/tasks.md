@@ -1,0 +1,8 @@
+- [x] Integrate latest Compose base and preserve owner interface
+- [x] Permission controls, listener, exact group and encrypted inbox
+- [x] Conservative rate drafts and date/source review rules
+- [x] Sarson-first commodity addition and public RSS research
+- [x] Daily scheduled research/report and offline voice controls
+- [x] Current-branch 16 JVM unit tests
+- [x] APK, lint and artifact validation
+- [x] GitHub review branch/PR and updated source delivery

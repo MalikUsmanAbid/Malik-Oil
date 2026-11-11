@@ -1,3 +1,8 @@
+## Incoming group rates and daily collection
+Open Reports after unlocking with the phone PIN/password. Enter the exact WhatsApp Business group title, consent to capture, save settings and grant notification access in Android settings. Supported notifications create encrypted local inbox items and review candidates. Missing grade/date must be completed before approval. Select daily research to schedule public-source collection and report generation around 18:00 Pakistan time. Add commodity starts with sarson and supports owner-added IDs. Listen/Stop uses installed offline speech voices.
+
+Current public-source research collects dated Google News RSS headlines. Empty results remain unavailable. Headline search does not establish an official all-mandi numeric rate. No paid AI key is needed by this collection path. See docs/COMPOSE-AUTOMATION.md for scope and actual verification.
+
 # Malik Oil · Android Market Workspace
 
 A modern native Android application built with Kotlin and Jetpack Compose (Material 3) for oilseed market rate intelligence, 3% movement alert policies, price history charts, conversational research, and daily reports in Punjab (Samundri, Faisalabad, Lahore, Multan, Gojra).
@@ -28,7 +33,7 @@ A modern native Android application built with Kotlin and Jetpack Compose (Mater
 Run Gradle to compile the debug APK:
 
 ```bash
-gradle :app:assembleDebug
+./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
 ```
 
 The compiled APK will be generated at:

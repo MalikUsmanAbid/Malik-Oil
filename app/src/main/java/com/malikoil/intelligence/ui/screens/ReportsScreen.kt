@@ -46,7 +46,7 @@ fun ReportsScreen(
     val nearbyOnly by viewModel.nearbyOnly.collectAsState()
 
     var sourceLabelText by remember { mutableStateOf("Owner reviewed/manual") }
-    var reportRowsText by remember { mutableStateOf("sarson | Samundri | standard | 8640 | 40kg | 2026-11-08T14:30:00+05:00") }
+    var reportRowsText by remember { mutableStateOf("") }
     var reviewConfirmed by remember { mutableStateOf(false) }
 
     // Simulation fields
@@ -73,6 +73,7 @@ fun ReportsScreen(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item {com.malikoil.intelligence.ui.components.AutomationControls(viewModel,currentSnapshot?.summary,language)}
         item {
             Spacer(modifier = Modifier.height(4.dp))
             Row(
@@ -417,7 +418,7 @@ fun ReportsScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
-                                reportRowsText = item.text
+                                reportRowsText = com.malikoil.intelligence.MarketRateParser.drafts(item.text,viewModel.repository.commodities.value.map{it.id}).ifBlank{item.text}
                                 sourceLabelText = "WhatsApp: ${item.group}"
                                 Toast.makeText(context, "Loaded into review form above.", Toast.LENGTH_SHORT).show()
                             },
