@@ -1,0 +1,8 @@
+{
+  "name": "Malik Oil",
+  "description": "Private market rate intelligence, 3% movement alerts, price history charts, and daily reports for oilseeds in Punjab.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

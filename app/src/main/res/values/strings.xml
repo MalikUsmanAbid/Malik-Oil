@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Malik Oil</string>
+    <string name="brand_name" translatable="false">MALIK OIL</string>
+    <string name="market_title">Market</string>
+    <string name="research_title">Research</string>
+    <string name="alerts_title">Alerts</string>
+    <string name="review_title">Review</string>
+    <string name="business_title">Business</string>
+    <string name="reports_title">Reports</string>
+    <string name="tool_row_count" translatable="false">%1$d %2$s</string>
+</resources>

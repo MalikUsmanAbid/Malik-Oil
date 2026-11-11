@@ -1,45 +1,35 @@
-# Malik Oil · Private Owner Rate Intelligence
+# Malik Oil · Android Market Workspace
 
-MVP source scaffold with a verified debug setup APK, updated 5 November 2026 (Asia/Karachi). Nothing deployed; no real credentials, account creation, production messages or live prices included.
+A modern native Android application built with Kotlin and Jetpack Compose (Material 3) for oilseed market rate intelligence, 3% movement alert policies, price history charts, conversational research, and daily reports in Punjab (Samundri, Faisalabad, Lahore, Multan, Gojra).
 
-## Start here
+## Core Features
 
-- [Architecture, security, roadmap](docs/ARCHITECTURE.md)
-- [Setup and APK build](docs/SETUP.md)
-- [Official-source research and free limits](docs/RESEARCH.md)
-- [API and alert rules](docs/API.md)
-- [Verification and remaining work](docs/STATUS.md)
+- **Market Watchlist & Trends**: Live observation stream tracking Sarson (Mustard), Canola, Til (Sesame), Taramira, and Alsi (Linseed) with prices in PKR/kg and 40kg (maund equivalent).
+- **Interactive Price History Chart**: Custom Compose Canvas chart supporting 1D, 1W, 1M, and All timeframes with high, low, range change metrics, touch inspection tooltip, and CSV export.
+- **±3% Movement Alert Engine**: Bidirectional 3% movement alert policy with deduplication suppression across matching commodity, mandi, grade, and source streams.
+- **Candidate Review Queue**: Owner inspection queue for incoming rates before publishing to verified history, including WhatsApp shared text and pasted rows import.
+- **Business Landed Cost Calculator**: Landed cost, revenue, gross margin, break-even per kg, and margin percentage scenarios.
+- **Conversational Research Desk**: Source-led market research with structured findings, inline citations [1], dated sources, and evidence quotes.
+- **Built-in Offline Plugins**: Rate converter (kg, 40kg, 100kg) and WhatsApp explicit row format validator.
+- **Daily Reports & Notification Inbox**: Daily Excel report generator (18:00 Asia/Karachi schedule), report history snapshots, and local WhatsApp group notification reader simulator with priority town filters.
+- **Trilingual Localization**: Instant switching between English, Urdu (اردو with RTL layout support), and Roman Urdu.
 
-## Included
+## Technology Stack
 
-Native Kotlin Android project: owner email/password login, latest rates, alerts, commodity additions, manual rates, WhatsApp pasted/shared-text import, approval queue, Android Keystore encrypted offline cache, FCM token registration and notification deduplication. Backend: Cloudflare Workers TypeScript, D1 migration, Firebase JWT owner allowlist, audit records, bidirectional 3% alert evaluation in an atomic SQL transaction, delivery leases and retries, market summaries, business margin calculator API, optional cloud AI endpoint. Optional laptop-local Ollama summary tool and future JARVICS event/source adapter contracts.
+- **Framework**: Jetpack Compose with Material 3 Design
+- **Language**: Kotlin 2.1 / 2.2
+- **Build System**: Gradle 9.3.1 with Android Gradle Plugin (AGP) 9.1.1
+- **Architecture**: MVVM with Kotlin Coroutines and StateFlow
+- **Minimum SDK**: Android 8.0 (API 26)
+- **Target SDK**: Android 15 (API 35)
 
-Initial items: sarson, canola, til, taramira, alsi and other. Add named commodities without changing the schema. Explicit units: kg, 40kg and 100kg, all PKR. No implicit maund conversion.
+## Building the App
 
-## Local backend
+Run Gradle to compile the debug APK:
 
-Requires Node 22+ and Python 3 for SQL tests. From `backend/`:
-
-```powershell
-npm ci
-npm run check
-npm test
-python test/test_alerts.py
-npm run migrate:local
-npm run dev
+```bash
+gradle :app:assembleDebug
 ```
 
-`GET http://127.0.0.1:8787/health` is public. Every data endpoint fails closed until Firebase project and owner UID are configured. There is deliberately no development auth bypass. Local tests require no credentials. See setup for authenticated device testing.
-
-## Scope boundary
-
-This is an actionable scaffold, not a production-complete market feed or an already-running service. A debug setup APK has been compiled and verified; see [APK build report](docs/APK-BUILD.md). AMIS collection, unrestricted WhatsApp history access, full accounting, on-phone LLM inference and JARVICS transport are not implemented. Review the status file before deployment. The laptop can be off after an authorized cloud deployment; a free service cannot promise an uptime SLA or instant data from every Punjab mandi.
-
-## Local workflow preview
-
-For a synthetic browser workflow test, run `python tools/preview/server.py --port 8765`, then open http://127.0.0.1:8765/. This is not native Android execution. See [preview notes](docs/LOCAL-PREVIEW.md).
-
-## Current local build
-
-JDK/SDK are installed on this machine. From this project root, run `tools/build-apk.ps1 -Lint`.
-Real Firebase preparation: [owner steps](docs/FIREBASE-OWNER-STEPS.md). Spec Kit feature: [private APK](specs/001-private-android-apk/spec.md).
+The compiled APK will be generated at:
+`app/build/outputs/apk/debug/app-debug.apk`

@@ -1,1 +1,0 @@
-CREATE TABLE IF NOT EXISTS research_usage(day TEXT PRIMARY KEY, calls INTEGER NOT NULL CHECK(calls>=0));
