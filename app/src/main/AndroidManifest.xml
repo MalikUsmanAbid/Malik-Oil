@@ -4,6 +4,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <queries><intent><action android:name="android.intent.action.TTS_SERVICE"/></intent></queries>
     <application
         android:name=".MalikApplication"
         android:allowBackup="false"
@@ -16,6 +19,8 @@
         android:theme="@style/Theme.MalikOil"
         android:usesCleartextTraffic="false">
 
+        <service android:name=".WhatsAppRateListener" android:exported="false" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"><intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter></service>
+        <service android:name=".DailyMarketJob" android:exported="false" android:permission="android.permission.BIND_JOB_SERVICE"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

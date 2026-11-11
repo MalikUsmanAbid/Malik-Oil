@@ -25,27 +25,48 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MarketViewModel by viewModels()
 
+    private var pendingSharedText=""
+    private var ownerUnlocked by mutableStateOf(false)
+    private val unlockOwner=registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()){result->
+        ownerUnlocked=result.resultCode==RESULT_OK
+        if(ownerUnlocked&&pendingSharedText.isNotBlank()){
+            val text=pendingSharedText;pendingSharedText=""
+            viewModel.approveDailyRows(text,"Shared WhatsApp Text")
+            viewModel.setTab("review")
+        }
+    }
+    override fun onPause(){ownerUnlocked=false;super.onPause()}
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+        viewModel.repository.attach(this)
         enableEdgeToEdge()
 
         // Ensure notification channel is initialized
         com.malikoil.intelligence.notification.PriceAlertNotificationManager.ensureChannel(this)
 
-        if (intent?.getStringExtra("open_tab") == "alerts") {
-            viewModel.setTab("alerts")
+        if (intent?.getStringExtra("open_tab") in listOf("alerts","reports")) {
+            viewModel.setTab(intent.getStringExtra("open_tab")?:"alerts")
         }
 
         // Handle shared text from WhatsApp or other apps
         if (intent?.action == Intent.ACTION_SEND && intent?.type == "text/plain") {
             val sharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
             if (!sharedText.isNullOrBlank()) {
-                viewModel.approveDailyRows(sharedText, "Shared WhatsApp Text")
+                pendingSharedText=sharedText.take(50000)
                 viewModel.setTab("review")
             }
         }
 
         setContent {
+            if(!ownerUnlocked){
+                Button(onClick={
+                    val manager=getSystemService(android.app.KeyguardManager::class.java)
+                    val intent=manager.createConfirmDeviceCredentialIntent("Malik Oil owner workspace","Unlock private market data")
+                    if(intent!=null)unlockOwner.launch(intent)
+                }){Text("Unlock owner workspace · Set a phone PIN/password first")}
+                return@setContent
+            }
             MalikOilTheme {
                 val currentTab by viewModel.currentTab.collectAsState()
                 val language by viewModel.language.collectAsState()

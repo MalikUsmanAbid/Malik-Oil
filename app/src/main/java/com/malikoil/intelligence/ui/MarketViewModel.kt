@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 
 class MarketViewModel(
-    val repository: MarketRepository = MarketRepository()
+    val repository: MarketRepository = MarketRepository.shared
 ) : ViewModel() {
 
     private val _currentTab = MutableStateFlow("rates")
@@ -174,10 +174,10 @@ class MarketViewModel(
         viewModelScope.launch {
             _isResearching.value = true
             _userMessage.value = "Searching sources and analyzing market evidence…"
-            delay(1200) // realistic source-search feel
+
             val turn = repository.runResearch(question, commodity, market, depth, _activeSessionId.value)
             _isResearching.value = false
-            _userMessage.value = "Evidence verified with citations."
+            _userMessage.value = "Public source search complete. Check source dates and coverage."
         }
     }
 
@@ -215,7 +215,8 @@ class MarketViewModel(
                 amount = item.amount,
                 unit = item.unit,
                 grade = item.grade,
-                source = sourceLabel
+                source = sourceLabel,
+                observedAt=item.observedAt
             )
         }
         _userMessage.value = "${parsed.size} rows approved for reports and review."

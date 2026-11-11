@@ -4,6 +4,8 @@ import android.content.Context
 import com.malikoil.intelligence.BuildConfig
 import com.malikoil.intelligence.model.*
 import com.malikoil.intelligence.notification.PriceAlertNotificationManager
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +24,11 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-class MarketRepository {
+class MarketRepository(private val includeSamples:Boolean = false) {
+    companion object {val shared by lazy {MarketRepository()}}
+    private var ownerContext:Context?=null
+    private val ownerScope=kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob()+Dispatchers.IO)
+
 
     private val _commodities = MutableStateFlow(
         listOf(
@@ -51,6 +57,7 @@ class MarketRepository {
         val newCommodity = Commodity(cleanId, displayEn, displayUr)
         _commodities.value = _commodities.value + newCommodity
 
+        if(includeSamples){
         // Seed initial rate for newly registered commodity
         val now = Instant.now().epochSecond
         val initialRate = RateObservation(
@@ -64,6 +71,7 @@ class MarketRepository {
             pricePaisaKg = (initialRatePkrKg * 100).toLong()
         )
         _rates.value = _rates.value + initialRate
+        }
         return newCommodity
     }
 
@@ -106,7 +114,12 @@ class MarketRepository {
     private val priorityTowns = listOf("Samundri", "Faisalabad", "Gojra", "Jhang", "Toba Tek Singh", "Lahore", "Multan")
 
     init {
-        seedInitialData()
+        if(includeSamples)seedInitialData()
+        else {
+            _commodities.value=listOf(Commodity("sarson","Sarson (Mustard)","سرسوں"))
+            _marketSentiment.value=MarketSentimentSummary("Unknown",0.0,"No verified current market evidence","Unknown","Unknown","Unknown","Not checked")
+            _searchGroundingStatus.value=SearchGroundingStatus(false,"","Public RSS",0,"Not checked")
+        }
     }
 
     private fun seedInitialData() {
@@ -323,6 +336,45 @@ class MarketRepository {
         )
     }
 
+
+    @Synchronized fun attach(context:Context){
+        if(ownerContext!=null)return
+        val app=context.applicationContext
+        val cache=com.malikoil.intelligence.SecureCache(app)
+        val saved=cache.read("owner_snapshot_v1","device-owner")
+        check(saved!=null||!cache.exists("owner_snapshot_v1")){"Encrypted owner data unavailable"}
+        if(saved!=null){
+            val state=com.google.gson.Gson().fromJson(saved.getString("data"),com.malikoil.intelligence.OwnerSnapshot::class.java)
+            _commodities.value=state.commodities;_rates.value=state.rates;_candidates.value=state.candidates
+            _notifications.value=state.notifications;_dailyReports.value=state.reports;_researchSessions.value=state.sessions;_alerts.value=state.alerts
+        }
+        ownerContext=app
+        listOf(_commodities,_rates,_candidates,_notifications,_dailyReports,_researchSessions,_alerts).forEach{flow->
+            ownerScope.launch {flow.collect{persistOwnerState()}}
+        }
+    }
+    @Synchronized fun persistOwnerState(){
+        val context=ownerContext?:return
+        val state=com.malikoil.intelligence.OwnerSnapshot(_commodities.value,_rates.value.takeLast(2000),_candidates.value.filter{candidate->_rates.value.none{it.id=="obs_${candidate.id}"}}.take(200),_notifications.value.take(200),_dailyReports.value.take(7),_researchSessions.value.take(8),_alerts.value.take(200))
+        val text=com.google.gson.Gson().toJson(state)
+        require(text.toByteArray().size<=6291456){"Owner storage full"}
+        com.malikoil.intelligence.SecureCache(context).save("owner_snapshot_v1","device-owner",text)
+    }
+    @Synchronized fun receiveRateNotification(group:String,text:String,timestamp:Long){
+        val id=java.security.MessageDigest.getInstance("SHA-256").digest((group+"|"+timestamp+"|"+text).toByteArray()).joinToString(""){"%02x".format(it)}
+        if(_notifications.value.any{it.id==id})return
+        val cities=com.malikoil.intelligence.MandiMessageIndex.cities(text)
+        _notifications.value=(listOf(NotificationCaptureItem(id,group,text,timestamp/1000,cities,com.malikoil.intelligence.MandiMessageIndex.sarsonMention(text)))+_notifications.value).take(200)
+        val parsed=checkAndParseRows(text)
+        _candidates.value=(parsed.mapIndexed{i,r->r.copy(id="$id-$i",source="WhatsApp Business group: $group")}+_candidates.value).take(200)
+        persistOwnerState()
+    }
+    suspend fun dailyResearch(){
+        val day=OffsetDateTime.now(ZoneId.of("Asia/Karachi")).toLocalDate().toString()
+        val session=_researchSessions.value.firstOrNull{it.scope=="daily|$day"}?:ResearchSession(UUID.randomUUID().toString(),"Daily Punjab · $day","daily|$day").also{_researchSessions.value=(listOf(it)+_researchSessions.value).take(8)}
+        for(commodity in _commodities.value.take(20))runResearch("Today's Punjab ${commodity.nameEn} rates near Samundri and Faisalabad",commodity.id,"Samundri","quick",session.id)
+    }
+
     // Rate calculations & conversions
     fun normalizePricePaisaKg(amount: Double, unit: String): Long {
         val baseAmount = BigDecimal.valueOf(amount)
@@ -343,7 +395,8 @@ class MarketRepository {
         amount: Double,
         unit: String,
         grade: String = "standard",
-        source: String = "Owner Manual"
+        source: String = "Owner Manual",
+        observedAt:Long=Instant.now().epochSecond
     ) {
         val pricePaisa = normalizePricePaisaKg(amount, unit)
         val candidate = RateCandidate(
@@ -355,26 +408,30 @@ class MarketRepository {
             amount = amount,
             unit = unit,
             pricePaisaKg = pricePaisa,
-            observedAt = Instant.now().epochSecond
+            observedAt = observedAt
         )
         _candidates.value = listOf(candidate) + _candidates.value
     }
 
     // Approve Candidate
-    fun approveCandidate(id: String): Boolean {
+    @Synchronized fun approveCandidate(id: String): Boolean {
         val candidate = _candidates.value.find { it.id == id } ?: return false
-        val streamKey = "${candidate.commodity}_${candidate.market.lowercase().replace(" ", "_")}"
+        if(_rates.value.any{it.id=="obs_${candidate.id}"}){
+            _candidates.value=_candidates.value.filter{it.id!=id}
+            return false
+        }
+        val streamKey = listOf(candidate.commodity,candidate.market.lowercase(),candidate.grade.lowercase(),candidate.source).joinToString("|")
 
         val matchingRates = _rates.value.filter {
             it.commodity == candidate.commodity &&
             it.market.equals(candidate.market, ignoreCase = true) &&
-            it.grade.equals(candidate.grade, ignoreCase = true)
+            it.grade.equals(candidate.grade, ignoreCase = true) && it.source==candidate.source
         }.sortedByDescending { it.observedAt }
 
         val oldRate = matchingRates.firstOrNull()
 
         val newObs = RateObservation(
-            id = UUID.randomUUID().toString(),
+            id = "obs_${candidate.id}",
             stream = streamKey,
             commodity = candidate.commodity,
             market = candidate.market,
@@ -511,7 +568,8 @@ class MarketRepository {
             grade = "standard",
             source = "Simulated Mandi Hit",
             observedAt = Instant.now().epochSecond,
-            pricePaisaKg = (testPrice * 100).toLong()
+            pricePaisaKg = (testPrice * 100).toLong(),
+            isSample = true
         )
         _rates.value = _rates.value + simulatedObs
         checkTargetPriceAlerts(context, simulatedObs)
@@ -543,84 +601,21 @@ class MarketRepository {
     }
 
     // Conversational Research
-    fun runResearch(
+    suspend fun runResearch(
         question: String,
         commodity: String,
         market: String,
         depth: String,
         sessionId: String? = null
     ): ResearchTurn {
-        val now = Instant.now().epochSecond
-        val dateStr = OffsetDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE)
-
-        val turn = when {
-            question.contains("news", ignoreCase = true) || question.contains("خبر", ignoreCase = true) -> {
-                ResearchTurn(
-                    question = question,
-                    text = "Domestic edible oilseed markets report steady buying by expeller mills. In $market and neighboring mandi centers, current harvest arrivals of $commodity show standard oil recovery rates.",
-                    commodity = commodity,
-                    market = market,
-                    depth = depth,
-                    findings = listOf(
-                        ResearchFinding("Market sentiment is influenced by international palm oil import rates and local crushing volumes in Punjab.", 1),
-                        ResearchFinding("Mandi committee inspections report healthy trading activity without unusual supply bottlenecks.", 2)
-                    ),
-                    sources = listOf(
-                        ResearchSource(1, "Daily Agri Business Pakistan", "AgriWatch Pakistan", dateStr, "https://agriwatch.pk"),
-                        ResearchSource(2, "Punjab Mandi Arrivals & Price Index", "Directorate of Agriculture Punjab", dateStr, "https://agripunjab.gov.pk")
-                    ),
-                    supports = listOf(
-                        EvidenceSupport(1, "Expeller mills in central Punjab maintained active bid prices aligned with vegetable ghee factory demand."),
-                        EvidenceSupport(2, "No severe moisture dockage was applied on standard arrivals in $market division this week.")
-                    )
-                )
-            }
-            question.contains("supply", ignoreCase = true) || question.contains("production", ignoreCase = true) || question.contains("پیداوار", ignoreCase = true) -> {
-                ResearchTurn(
-                    question = question,
-                    text = "Punjab oilseed production forecasts remain consistent with seasonal acreage projections. Seed moisture averages 8.5% with strong demand from local oil expellers.",
-                    commodity = commodity,
-                    market = market,
-                    depth = depth,
-                    findings = listOf(
-                        ResearchFinding("Canola and Sarson acreage in Faisalabad and Multan divisions showed favorable pod development.", 1),
-                        ResearchFinding("Storage levels at village-level arhtis are moving quickly due to high seasonal expeller turnover.", 2)
-                    ),
-                    sources = listOf(
-                        ResearchSource(1, "Crop Reporting Services Punjab", "Agriculture Dept Lahore", dateStr, "https://crs.agripunjab.gov.pk"),
-                        ResearchSource(2, "National Oilseed Development Review", "Pakistan Oilseeds Board", dateStr, "https://podb.gov.pk")
-                    ),
-                    supports = listOf(
-                        EvidenceSupport(1, "Favorable weather during flowering supported pod density across key irrigated tracts."),
-                        EvidenceSupport(2, "Arhti turnover rates indicate low inventory holding, reflecting immediate crushing demand.")
-                    )
-                )
-            }
-            else -> {
-                ResearchTurn(
-                    question = question,
-                    text = "Verified market evidence for $commodity in $market: Quotes are determined by physical inspection of moisture, clean seed ratio, and oil yield. Verify actual bag weight and tare deductions on site.",
-                    commodity = commodity,
-                    market = market,
-                    depth = depth,
-                    findings = listOf(
-                        ResearchFinding("Standard mandi quotes reflect dry, cleaned seed (standard 40kg maund equivalent).", 1),
-                        ResearchFinding("Transport differentials between Samundri and major crushing hubs (Faisalabad/Lahore) range between PKR 2.0-3.5 per kg.", 2)
-                    ),
-                    sources = listOf(
-                        ResearchSource(1, "Punjab Agriculture Marketing Rules & Standards", "PAMRA Lahore", dateStr, "https://pamra.punjab.gov.pk"),
-                        ResearchSource(2, "Punjab Transport & Logistics Tariff Survey", "Punjab Goods Freight Assoc.", dateStr, "https://freightpunjab.com")
-                    ),
-                    supports = listOf(
-                        EvidenceSupport(1, "Official standard weight for oilseed trading is 40kg with standard tare deduction guidelines."),
-                        EvidenceSupport(2, "Freight charges for inter-district truckloads in Faisalabad division have held stable.")
-                    )
-                )
-            }
-        }
+        val started=System.currentTimeMillis()
+        val sources=try{com.malikoil.intelligence.PublicRateResearch.fetch(commodity,market,question)}catch(cancelled:kotlinx.coroutines.CancellationException){throw cancelled}catch(_:Exception){emptyList()}
+        val answer=if(sources.isEmpty())"Current Punjab mandi rates are unavailable from this search. Verify with a dated mandi quote."
+            else "Public news headlines. Check publication dates and the original source. Current mandi prices require separate verification.\n"+sources.joinToString("\n"){"[${it.id}] ${it.title} · ${it.publishedAt}"}
+        val turn=ResearchTurn(question,answer,commodity,market,depth,sources=sources,durationMs=System.currentTimeMillis()-started)
 
         // Add to active session
-        val currentSessions = _researchSessions.value.toMutableList()
+        val currentSessions = _researchSessions.value.map{it.copy(turns=it.turns.toMutableList())}.toMutableList()
         val targetSession = currentSessions.find { it.id == sessionId } ?: currentSessions.firstOrNull() ?: run {
             val created = ResearchSession(UUID.randomUUID().toString(), title = question.take(30), scope = "$market|$commodity")
             currentSessions.add(created)
@@ -628,10 +623,11 @@ class MarketRepository {
         }
 
         targetSession.turns.add(turn)
+        while(targetSession.turns.size>20)targetSession.turns.removeAt(0)
         if (targetSession.title.isBlank() || targetSession.title == "New Research") {
             targetSession.title = question.take(40)
         }
-        _researchSessions.value = currentSessions
+        _researchSessions.value = currentSessions.take(8)
         return turn
     }
 
@@ -652,16 +648,25 @@ class MarketRepository {
     // Daily Report Generation
     fun generateTodayReport(): DailyReportSnapshot {
         val todayStr = OffsetDateTime.now(ZoneId.of("Asia/Karachi")).format(DateTimeFormatter.ISO_LOCAL_DATE)
-        val matchingRates = _rates.value.filter { !it.isSample }
-        val lines = mutableListOf("date,commodity,market,grade,price_pkr_kg,price_pkr_40kg,source")
+        val matchingRates = _rates.value.filter { !it.isSample && Instant.ofEpochSecond(it.observedAt).atZone(ZoneId.of("Asia/Karachi")).toLocalDate().toString()==todayStr }
+        fun csv(value:String):String {
+            val safe=if(value.trimStart().firstOrNull() in listOf('=','+','-','@'))"'"+value else value
+            return "\""+safe.replace("\"","\"\"")+"\""
+        }
+        val lines = mutableListOf("date,commodity,market,grade,price_pkr_kg,price_pkr_40kg,source,observed_at,id")
         val summaryLines = mutableListOf("Malik Oil Daily Report · $todayStr")
         summaryLines.add("Total reviewed observations: ${matchingRates.size}")
 
-        matchingRates.takeLast(10).forEach { r ->
-            lines.add("$todayStr,${r.commodity},${r.market},${r.grade},${r.pricePkrKg},${r.pricePkrMaund},\"${r.source}\"")
+        matchingRates.forEach { r ->
+            lines.add(listOf(todayStr,r.commodity,r.market,r.grade,r.pricePkrKg.toString(),r.pricePkrMaund.toString(),r.source,Instant.ofEpochSecond(r.observedAt).toString(),r.id).joinToString(","){csv(it)})
             summaryLines.add("${r.commodity.replaceFirstChar { it.uppercase() }} (${r.market}): PKR %.2f/kg (PKR %.0f/40kg)".format(r.pricePkrKg, r.pricePkrMaund))
         }
 
+        val research=_researchSessions.value.flatMap{it.turns}.filter{Instant.ofEpochMilli(it.checkedAt).atZone(ZoneId.of("Asia/Karachi")).toLocalDate().toString()==todayStr}.takeLast(20)
+        if(research.isNotEmpty()){
+            summaryLines.add("Public-source research · current numeric rates require separate review")
+            research.forEach{turn->summaryLines.add(turn.commodity+" · "+turn.text.take(1000));turn.sources.take(3).forEach{ref->summaryLines.add(ref.url)}}
+        }
         val snapshot = DailyReportSnapshot(
             date = todayStr,
             summary = summaryLines.joinToString("\n"),
@@ -669,37 +674,23 @@ class MarketRepository {
             generatedAt = Instant.now().epochSecond,
             rawCsv = lines.joinToString("\n")
         )
-        _dailyReports.value = listOf(snapshot) + _dailyReports.value
+        _dailyReports.value = (listOf(snapshot) + _dailyReports.value.filter{it.date!=todayStr}).take(7)
         return snapshot
     }
 
     // WhatsApp Row Parsing
     fun checkAndParseRows(rawText: String): List<RateCandidate> {
-        val lines = rawText.lines().map { it.trim() }.filter { it.isNotBlank() }
-        val candidates = mutableListOf<RateCandidate>()
-        for (line in lines) {
-            val parts = line.split("|").map { it.trim() }
-            if (parts.size >= 5) {
-                val comm = parts[0].lowercase()
-                val mkt = parts[1]
-                val grd = parts[2]
-                val amt = parts[3].toDoubleOrNull() ?: continue
-                val unt = parts[4]
-                val pricePaisa = normalizePricePaisaKg(amt, unt)
-                candidates.add(
-                    RateCandidate(
-                        id = UUID.randomUUID().toString(),
-                        commodity = comm,
-                        market = mkt,
-                        grade = grd,
-                        source = "Parsed WhatsApp Row",
-                        amount = amt,
-                        unit = unt,
-                        pricePaisaKg = pricePaisa,
-                        observedAt = Instant.now().epochSecond
-                    )
-                )
-            }
+        require(rawText.length<=50000)
+        val lines=rawText.lines().filter{it.isNotBlank()};require(lines.size<=20)
+        val candidates=mutableListOf<RateCandidate>()
+        for(line in lines){
+            val f=line.split('|').map{it.trim()}
+            if(f.size!=6||f[0] !in _commodities.value.map{it.id}||f[1].length !in 1..80||f[2].length !in 1..80||f[2]=="GRADE_REQUIRED")continue
+            val amount=f[3].toDoubleOrNull()?:continue
+            if(!amount.isFinite()||amount<=0||amount>100000000||f[4] !in listOf("kg","40kg","100kg"))continue
+            val observed=runCatching{OffsetDateTime.parse(f[5]).toEpochSecond()}.getOrNull()?:continue
+            if(observed>Instant.now().epochSecond||observed<946684800)continue
+            candidates.add(RateCandidate(UUID.randomUUID().toString(),f[0],f[1],f[2],"WhatsApp review",amount,f[4],normalizePricePaisaKg(amount,f[4]),observed))
         }
         return candidates
     }
@@ -804,76 +795,16 @@ class MarketRepository {
 
     // NEW: WhatsApp Professional Rate Card Generator
     fun generateWhatsAppRateCardText(lang: String): String {
-        val todayStr = OffsetDateTime.now(ZoneId.of("Asia/Karachi")).format(DateTimeFormatter.ofPattern("dd MMMM yyyy"))
-        val sarsonRate = _rates.value.filter { it.commodity == "sarson" }.maxByOrNull { it.observedAt }
-        val canolaRate = _rates.value.filter { it.commodity == "canola" }.maxByOrNull { it.observedAt }
-        val tilRate = _rates.value.filter { it.commodity == "til" }.maxByOrNull { it.observedAt }
-        val taramiraRate = _rates.value.filter { it.commodity == "taramira" }.maxByOrNull { it.observedAt }
-        val alsiRate = _rates.value.filter { it.commodity == "alsi" }.maxByOrNull { it.observedAt }
-
-        val sarsonMaund = sarsonRate?.pricePkrMaund ?: 8640.0
-        val canolaMaund = canolaRate?.pricePkrMaund ?: 9120.0
-        val tilMaund = tilRate?.pricePkrMaund ?: 18200.0
-        val taramiraMaund = taramiraRate?.pricePkrMaund ?: 7000.0
-        val alsiMaund = alsiRate?.pricePkrMaund ?: 8800.0
-
-        return if (lang == "ur") {
-            """
-            🌾 *ملک آئل اینڈ ایکسپیلر ملز · سمندری (فیصل آباد)*
-            📅 *تاریخ:* $todayStr
-            📍 *مقام:* غلہ منڈی / راجانہ روڈ، سمندری
-
-            📢 *آج کے تصدیق شدہ منڈی ریٹس (فی ۴۰ کلو / من):*
-            🟡 *سرسوں (Sarson):* PKR %,.0f / من (PKR %.1f/kg)
-            🟡 *کینولا (Canola):* PKR %,.0f / من (PKR %.1f/kg)
-            ⚪ *تل (Sesame):* PKR %,.0f / من (PKR %.1f/kg)
-            🟤 *تارامیرا (Taramira):* PKR %,.0f / من (PKR %.1f/kg)
-            🟤 *السی (Linseed):* PKR %,.0f / من (PKR %.1f/kg)
-
-            ⚖️ *معیاری منڈی شرائط:*
-            • ۸ فیصد نمی اور صاف مال معیار
-            • کاٹ اور باردانہ حسبِ ضابطہ منڈی پنجاب
-            • سمندری مل گیٹ یا غلہ منڈی نقد ترسیل
-
-            📞 *رابطہ:* ملک آئل انٹیلیجنس، سمندری · پنجاب
-            """.trimIndent().format(
-                sarsonMaund, sarsonMaund / 40.0,
-                canolaMaund, canolaMaund / 40.0,
-                tilMaund, tilMaund / 40.0,
-                taramiraMaund, taramiraMaund / 40.0,
-                alsiMaund, alsiMaund / 40.0
-            )
-        } else {
-            """
-            🌾 *MALIK OIL & EXPELLER MILLS · SAMUNDRI*
-            📅 *Date:* $todayStr
-            📍 *Location:* Grain Market, Samundri · Punjab
-
-            📢 *Today's Verified Market Rates (per 40kg / Maund):*
-            🟡 *Sarson (Mustard):* PKR %,.0f / 40kg (PKR %.1f/kg)
-            🟡 *Canola:* PKR %,.0f / 40kg (PKR %.1f/kg)
-            ⚪ *Til (Sesame):* PKR %,.0f / 40kg (PKR %.1f/kg)
-            🟤 *Taramira:* PKR %,.0f / 40kg (PKR %.1f/kg)
-            🟤 *Alsi (Linseed):* PKR %,.0f / 40kg (PKR %.1f/kg)
-
-            ⚖️ *Standard Mandi Terms:*
-            • 8% standard moisture baseline
-            • Delivery at Samundri Mill Gate / Mandi
-            • Instant settlement & weighbridge verification
-
-            📞 *Contact:* Malik Oil Intelligence, Samundri · Punjab
-            """.trimIndent().format(
-                sarsonMaund, sarsonMaund / 40.0,
-                canolaMaund, canolaMaund / 40.0,
-                tilMaund, tilMaund / 40.0,
-                taramiraMaund, taramiraMaund / 40.0,
-                alsiMaund, alsiMaund / 40.0
-            )
-        }
+        val today=OffsetDateTime.now(ZoneId.of("Asia/Karachi")).toLocalDate()
+        val reviewed=_rates.value.filter{!it.isSample&&Instant.ofEpochSecond(it.observedAt).atZone(ZoneId.of("Asia/Karachi")).toLocalDate()==today}
+        val heading=if(lang=="ur")"ملک آئل · مالک کے جائزہ شدہ نرخ" else "Malik Oil · Owner-reviewed rates"
+        if(reviewed.isEmpty())return "$heading · $today\nNo reviewed current-day rates available."
+        return "$heading · $today\n"+reviewed.groupBy{it.stream}.values.map{it.maxBy{row->row.observedAt}}.joinToString("\n"){row->"${row.commodity} · ${row.market} · ${row.grade}: PKR ${row.pricePkrMaund}/40kg · ${row.source} · ${Instant.ofEpochSecond(row.observedAt)}"}
     }
 
     // Curated High-Integrity Punjab Oilseed Market News with Search Grounding Provenance
     fun getCuratedPunjabNews(): List<MarketNewsArticle> {
+        if(!includeSamples)return emptyList()
         val defaultQuery = "Punjab oilseed mustard canola mandi market news"
         return listOf(
             MarketNewsArticle(
@@ -1000,188 +931,14 @@ class MarketRepository {
     }
 
     // Live Search Grounding Tool Fetcher with Graceful Fallback
-    suspend fun fetchPunjabOilseedNews(apiKey: String? = null, forceRefresh: Boolean = false): List<MarketNewsArticle> {
-        _isNewsLoading.value = true
-        val queryText = "Punjab oilseed mustard canola mandi market news"
-        return withContext(Dispatchers.IO) {
-            val key = apiKey?.takeIf { it.isNotBlank() } ?: BuildConfig.NEWS_API_KEY
-            val fetchedArticles = mutableListOf<MarketNewsArticle>()
-
-            // 1. Google News RSS Search Grounding Query (Public, No API Key Required)
-            try {
-                val rssUrl = URL("https://news.google.com/rss/search?q=Punjab+oilseed+OR+mustard+OR+sarson+OR+canola+pakistan&hl=en-PK&gl=PK&ceid=PK:en")
-                val rssConn = (rssUrl.openConnection() as HttpURLConnection).apply {
-                    requestMethod = "GET"
-                    connectTimeout = 4000
-                    readTimeout = 4000
-                    setRequestProperty("User-Agent", "Mozilla/5.0 (compatible; MalikOilIntelligence/1.0)")
-                }
-                if (rssConn.responseCode == 200) {
-                    val reader = BufferedReader(InputStreamReader(rssConn.inputStream))
-                    val rssContent = reader.readText()
-                    reader.close()
-
-                    val itemRegex = Regex("<item>(.*?)</item>", RegexOption.DOT_MATCHES_ALL)
-                    val titleRegex = Regex("<title>(.*?)</title>")
-                    val linkRegex = Regex("<link>(.*?)</link>")
-                    val pubDateRegex = Regex("<pubDate>(.*?)</pubDate>")
-                    val sourceRegex = Regex("<source[^>]*>(.*?)</source>")
-
-                    val matches = itemRegex.findAll(rssContent).take(8)
-                    var idx = 0
-                    for (m in matches) {
-                        val itemXml = m.groupValues[1]
-                        val rawTitle = titleRegex.find(itemXml)?.groupValues?.get(1)?.replace("<![CDATA[", "")?.replace("]]>", "")?.trim() ?: continue
-                        val rawLink = linkRegex.find(itemXml)?.groupValues?.get(1)?.trim() ?: "https://news.google.com"
-                        val rawPub = pubDateRegex.find(itemXml)?.groupValues?.get(1)?.take(16)?.trim() ?: "Recent"
-                        val rawSource = sourceRegex.find(itemXml)?.groupValues?.get(1)?.trim() ?: "Google News Search Grounding"
-
-                        val isSarson = rawTitle.contains("mustard", true) || rawTitle.contains("sarson", true)
-                        val isCanola = rawTitle.contains("canola", true)
-                        val isCrushing = rawTitle.contains("crush", true) || rawTitle.contains("mill", true) || rawTitle.contains("oil", true)
-
-                        val cat = when {
-                            isSarson -> "sarson"
-                            isCanola -> "canola"
-                            isCrushing -> "crushing"
-                            else -> "policy"
-                        }
-
-                        fetchedArticles.add(
-                            MarketNewsArticle(
-                                id = "rss_grounded_${idx++}",
-                                title = rawTitle,
-                                summary = "Live headline verified via Google News Search Grounding for Punjab oilseed trading and expeller processing.",
-                                sourceName = rawSource,
-                                category = cat,
-                                publishedAt = rawPub,
-                                url = rawLink,
-                                impactOnPrices = if (rawTitle.contains("rise", true) || rawTitle.contains("high", true) || rawTitle.contains("demand", true) || rawTitle.contains("gain", true)) "Bullish (+2.0%)" else "Neutral",
-                                mandiTag = "Punjab Mandis",
-                                keyTakeaways = listOf(
-                                    "Discovered via Search Grounding tool",
-                                    "Grounded source citation: $rawSource",
-                                    "Active market sentiment indicator"
-                                ),
-                                isLiveApi = true,
-                                isSearchGrounded = true,
-                                searchGroundingQuery = queryText,
-                                groundedSources = listOf("Google News RSS", rawSource, "Pakistan Agri Search Index"),
-                                groundingScore = 0.98
-                            )
-                        )
-                    }
-                }
-                rssConn.disconnect()
-            } catch (_: Exception) {
-                // Graceful fallback to verified curated feed
-            }
-
-            // 2. News API Live Aggregator (if API key provided)
-            if (key.isNotBlank()) {
-                try {
-                    val query = "oilseed+OR+mustard+OR+sarson+OR+canola+pakistan"
-                    val urlString = "https://newsapi.org/v2/everything?q=$query&language=en&sortBy=publishedAt&pageSize=15&apiKey=$key"
-                    val url = URL(urlString)
-                    val conn = (url.openConnection() as HttpURLConnection).apply {
-                        requestMethod = "GET"
-                        connectTimeout = 4000
-                        readTimeout = 4000
-                        setRequestProperty("User-Agent", "MalikOilIntelligence/1.0")
-                    }
-
-                    if (conn.responseCode == 200) {
-                        val reader = BufferedReader(InputStreamReader(conn.inputStream))
-                        val response = reader.readText()
-                        reader.close()
-
-                        val json = JSONObject(response)
-                        if (json.optString("status") == "ok") {
-                            val articlesArray = json.optJSONArray("articles")
-                            if (articlesArray != null) {
-                                for (i in 0 until articlesArray.length()) {
-                                    val item = articlesArray.getJSONObject(i)
-                                    val title = item.optString("title", "")
-                                    if (title.isBlank() || title == "[Removed]") continue
-
-                                    val desc = item.optString("description", "")
-                                    val sourceObj = item.optJSONObject("source")
-                                    val sourceName = sourceObj?.optString("name", "News Feed") ?: "News Feed"
-                                    val articleUrl = item.optString("url", "https://newsapi.org")
-                                    val publishedAt = item.optString("publishedAt", "Recent")
-
-                                    val isSarson = title.contains("mustard", true) || title.contains("sarson", true) || desc.contains("mustard", true)
-                                    val isCanola = title.contains("canola", true) || desc.contains("canola", true)
-                                    val isCrushing = title.contains("oil", true) || desc.contains("crush", true) || desc.contains("mill", true)
-
-                                    val category = when {
-                                        isSarson -> "sarson"
-                                        isCanola -> "canola"
-                                        isCrushing -> "crushing"
-                                        else -> "general"
-                                    }
-
-                                    fetchedArticles.add(
-                                        MarketNewsArticle(
-                                            id = "live_api_$i",
-                                            title = title,
-                                            summary = desc.ifBlank { title },
-                                            sourceName = sourceName,
-                                            category = category,
-                                            publishedAt = publishedAt.take(10),
-                                            url = articleUrl,
-                                            impactOnPrices = if (title.contains("rise", true) || title.contains("demand", true) || title.contains("gain", true) || title.contains("high", true)) "Bullish (+)" else "Neutral",
-                                            mandiTag = "Punjab & Pakistan",
-                                            keyTakeaways = listOf(
-                                                "Aggregated live via news API aggregator",
-                                                "Grounded against Punjab oilseed query"
-                                            ),
-                                            isLiveApi = true,
-                                            isSearchGrounded = true,
-                                            searchGroundingQuery = queryText,
-                                            groundedSources = listOf("NewsAPI Aggregator", sourceName),
-                                            groundingScore = 0.95
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    conn.disconnect()
-                } catch (_: Exception) {
-                    // Graceful fallback
-                }
-            }
-
-            val combined = (fetchedArticles + getCuratedPunjabNews()).distinctBy { it.title }
-            _newsArticles.value = combined
-            _isNewsLoading.value = false
-
-            // Update Search Grounding Status
-            _searchGroundingStatus.value = SearchGroundingStatus(
-                isGrounded = true,
-                activeQuery = queryText,
-                engine = "Google News Search Grounding",
-                verifiedSourcesCount = combined.size,
-                lastGroundedTime = "Just now · Grounded Live"
-            )
-
-            val bullishCount = combined.count { it.impactOnPrices.contains("Bullish", true) }
-            val bearishCount = combined.count { it.impactOnPrices.contains("Bearish", true) }
-            val sentiment = if (bullishCount > bearishCount) "Bullish" else if (bearishCount > bullishCount) "Bearish" else "Stable"
-
-            _marketSentiment.value = MarketSentimentSummary(
-                overallSentiment = sentiment,
-                sentimentDeltaPercent = if (sentiment == "Bullish") 2.4 else if (sentiment == "Bearish") -1.8 else 0.0,
-                dominantFactor = "Expeller mills in Faisalabad division actively purchasing dry mustard arrivals",
-                sarsonTrend = "Strong Buying (PKR 8,550 - 8,700/maund)",
-                canolaTrend = "Steady Arrivals (PKR 9,100 - 9,250/maund)",
-                crushingDemand = "High Capacity Utilization (84%)",
-                updatedAt = "Today · Search Grounded"
-            )
-
-            combined
-        }
+    suspend fun fetchPunjabOilseedNews(apiKey:String?=null,forceRefresh:Boolean=false):List<MarketNewsArticle>{
+        _isNewsLoading.value=true
+        return try {
+            val refs=com.malikoil.intelligence.PublicRateResearch.fetch("sarson","Samundri")
+            val articles=refs.map {ref->MarketNewsArticle(id=ref.url,title=ref.title,summary="Public headline. Current mandi rate unavailable until verified.",sourceName=ref.publisher,category="sarson",publishedAt=ref.publishedAt,url=ref.url,isLiveApi=true,isSearchGrounded=false,groundedSources=listOf(ref.publisher),groundingScore=0.0)}
+            _newsArticles.value=articles
+            _searchGroundingStatus.value=SearchGroundingStatus(false,"Punjab sarson mandi rates","Public RSS headlines",0,Instant.now().toString())
+            articles
+        }finally{_isNewsLoading.value=false}
     }
 }
-
