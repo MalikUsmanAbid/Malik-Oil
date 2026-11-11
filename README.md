@@ -1,5 +1,29 @@
 # Malik Oil · Android Market Workspace
 
+
+## Visual project guide
+
+A Kotlin and Jetpack Compose oilseed market workspace with price history, reviewable rate observations, movement-alert policies, research and local reporting. Production Firebase, device acceptance and live integrations remain subject to project setup and verification.
+
+These five original illustrations summarize the documented project. They are **documentation graphics, not application screenshots or evidence of production readiness**.
+
+![Malik Oil project overview](docs/portfolio/01-cover.svg)
+
+| Features | Architecture |
+| --- | --- |
+| ![Feature overview](docs/portfolio/02-features.svg) | ![Architecture overview](docs/portfolio/03-architecture.svg) |
+
+| Workflow | Technology |
+| --- | --- |
+| ![Workflow overview](docs/portfolio/04-workflow.svg) | ![Technology overview](docs/portfolio/05-stack.svg) |
+
+**Scope and verification:** Setup and integration boundaries apply. No real market prices, live WhatsApp delivery or production connectivity are represented.
+
+[Developer portfolio](https://developer-folio-nov04-ab.glovedlark8.chatgpt.site) (ChatGPT sign-in required) · [Usman Dev](https://github.com/MalikUsmanAbid)
+
+---
+
+
 A modern native Android application built with Kotlin and Jetpack Compose (Material 3) for oilseed market rate intelligence, 3% movement alert policies, price history charts, conversational research, and daily reports in Punjab (Samundri, Faisalabad, Lahore, Multan, Gojra).
 
 ## Core Features
