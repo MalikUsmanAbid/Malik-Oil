@@ -4,5 +4,5 @@
 - [x] Sarson-first commodity addition and public RSS research
 - [x] Daily scheduled research/report and offline voice controls
 - [x] Current-branch 16 JVM unit tests
-- [ ] APK, lint and artifact validation
-- [ ] GitHub review branch/PR and updated source delivery
+- [x] APK, lint and artifact validation
+- [x] GitHub review branch/PR and updated source delivery

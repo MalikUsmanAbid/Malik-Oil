@@ -7,7 +7,7 @@ if(-not $env:JAVA_HOME){
  $env:JAVA_HOME=$candidate.FullName
 }
 if(-not $env:ANDROID_HOME){$env:ANDROID_HOME=Join-Path $env:LOCALAPPDATA 'Android/Sdk'}
-('sdk.dir='+$env:ANDROID_HOME.Replace('\','/')) | Set-Content -LiteralPath (Join-Path $projectRoot 'local.properties') -Encoding ascii
+[System.IO.File]::WriteAllText((Join-Path $projectRoot 'local.properties'),('sdk.dir='+$env:ANDROID_HOME.Replace('\','/').Replace(':','\:')+"`n"))
 Push-Location $projectRoot
 try {
  $tasks=@(':app:testDebugUnitTest',':app:assembleDebug')
