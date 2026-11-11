@@ -1,3 +1,5 @@
+<p align="center"><img src="https://raw.githubusercontent.com/MalikUsmanAbid/MalikUsmanAbid/main/assets/usman-dev-logo.png" alt="Usman Dev — Full-Stack Developer" width="120" /></p>
+
 # Malik Oil · Android Market Workspace
 
 
@@ -57,3 +59,7 @@ gradle :app:assembleDebug
 
 The compiled APK will be generated at:
 `app/build/outputs/apk/debug/app-debug.apk`
+
+## Developer contact
+
+[Email](mailto:usmandev234@gmail.com) · [WhatsApp](https://wa.me/923157543808) · [Facebook](https://www.facebook.com/profile.php?id=61594398140960) · [GitHub](https://github.com/MalikUsmanAbid)
