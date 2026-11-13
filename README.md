@@ -1,32 +1,14 @@
-<p align="center"><img src="https://raw.githubusercontent.com/MalikUsmanAbid/MalikUsmanAbid/main/assets/usman-dev-logo.png" alt="Usman Dev — Full-Stack Developer" width="120" /></p>
-
 # Malik Oil · Android Market Workspace
-
-
-## Visual project guide
 
 A Kotlin and Jetpack Compose oilseed market workspace with price history, reviewable rate observations, movement-alert policies, research and local reporting. Production Firebase, device acceptance and live integrations remain subject to project setup and verification.
 
-These five original illustrations summarize the documented project. They are **documentation graphics, not application screenshots or evidence of production readiness**.
+![Malik-Oil project overview](docs/portfolio/01-cover.svg)
 
-![Malik Oil project overview](docs/portfolio/01-cover.svg)
+<sub>Project overview illustration; not an application screenshot.</sub>
 
-| Features | Architecture |
-| --- | --- |
-| ![Feature overview](docs/portfolio/02-features.svg) | ![Architecture overview](docs/portfolio/03-architecture.svg) |
+**Status:** Setup and integration boundaries apply. No real market prices, live WhatsApp delivery or production connectivity are represented.
 
-| Workflow | Technology |
-| --- | --- |
-| ![Workflow overview](docs/portfolio/04-workflow.svg) | ![Technology overview](docs/portfolio/05-stack.svg) |
-
-**Scope and verification:** Setup and integration boundaries apply. No real market prices, live WhatsApp delivery or production connectivity are represented.
-
-[Developer portfolio](https://malikusmandev.vercel.app) · [Usman Dev](https://github.com/MalikUsmanAbid)
-
----
-
-
-A modern native Android application built with Kotlin and Jetpack Compose (Material 3) for oilseed market rate intelligence, 3% movement alert policies, price history charts, conversational research, and daily reports in Punjab (Samundri, Faisalabad, Lahore, Multan, Gojra).
+[Overview graphics](docs/portfolio/) · [Developer portfolio](https://malikusmandev.vercel.app) · [Contact](mailto:usmandev234@gmail.com)
 
 ## Core Features
 
